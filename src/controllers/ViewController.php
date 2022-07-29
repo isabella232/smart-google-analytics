@@ -8,12 +8,12 @@
  * @copyright Copyright (c) 2021 zealousweb
  */
 
-namespace zealouswebcraftcms\smartgoogleanalytics\controllers;
+namespace zealousweb\smartgoogleanalytics\controllers;
 
 use Craft;
-use zealouswebcraftcms\smartgoogleanalytics\SmartGoogleAnalytics;
-use zealouswebcraftcms\smartgoogleanalytics\models\Views;
-use zealouswebcraftcms\smartgoogleanalytics\records\CraftRecords;
+use zealousweb\smartgoogleanalytics\SmartGoogleAnalytics;
+use zealousweb\smartgoogleanalytics\models\Views;
+use zealousweb\smartgoogleanalytics\records\CraftRecords;
 use craft\errors\InvalidPluginException;
 use craft\web\Controller;
 use craft\helpers\UrlHelper;
@@ -22,7 +22,7 @@ use craft\web\Session;
 use Exception;
 use League\OAuth2\Client\Provider\Exception\IdentityProviderException;
 use yii\web\NotFoundHttpException;
-use zealouswebcraftcms\smartgoogleanalytics\controllers\DefaultController;
+use zealousweb\smartgoogleanalytics\controllers\DefaultController;
 
 /**
  * View Controller
@@ -111,6 +111,8 @@ class ViewController extends Controller
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL,$url);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER,1);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
 		$items = curl_exec($ch);
 		curl_close ($ch);
 		$data = json_decode($items, true);
@@ -161,72 +163,81 @@ class ViewController extends Controller
 	/* To get metrics using API */
 	public function actionMetrics(){
 		$url = "https://www.googleapis.com/analytics/v3/metadata/ga/columns";
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL,$url);
+		$ch = curl_init($url);
+		//curl_setopt($ch, CURLOPT_URL,$url);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER,1);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
 		$items = curl_exec($ch);
 		curl_close ($ch);
 		$data = json_decode($items, true);
-		$items = $data['items'];
-		$data_items = [];
-		$dimensions_data = [];
-		$metrics_data = [];
-		$remove_metrics_id = [
-			'ga:1dayUsers',
-			'ga:7dayUsers',
-			'ga:14dayUsers',
-			'ga:28dayUsers',
-			'ga:30dayUsers'
-		];
-		foreach( $items as $item ){
-			if( $item['attributes']['status'] == 'DEPRECATED' )
-				continue;
+		if($data){
+			$items = $data['items'];
+			$data_items = [];
+			$dimensions_data = [];
+			$metrics_data = [];
+			$remove_metrics_id = [
+				'ga:1dayUsers',
+				'ga:7dayUsers',
+				'ga:14dayUsers',
+				'ga:28dayUsers',
+				'ga:30dayUsers'
+			];
+			foreach( $items as $item ){
+				if( $item['attributes']['status'] == 'DEPRECATED' )
+					continue;
 
-			if( $item['attributes']['type'] == 'DIMENSION' ) {
-				if($item['attributes']['group'] != 'Geo Network') {
-					$dimensions_data[ $item['attributes']['group'] ][] = $item;
+				if( $item['attributes']['type'] == 'DIMENSION' ) {
+					if($item['attributes']['group'] != 'Geo Network') {
+						$dimensions_data[ $item['attributes']['group'] ][] = $item;
+					}
+				}
+
+				if( $item['attributes']['type'] == 'METRIC' ) {
+					if (!in_array($item['id'], $remove_metrics_id)) {
+						$metrics_data[ $item['attributes']['group'] ][] = $item;
+					}		
 				}
 			}
-
-			if( $item['attributes']['type'] == 'METRIC' ) {
-				if (!in_array($item['id'], $remove_metrics_id)) {
-					$metrics_data[ $item['attributes']['group'] ][] = $item;
-				}		
-			}
-		}
-		$data_items['metrics'] = $metrics_data;
-		$data_items['dimensions'] = $dimensions_data;
-		return $data_items;
+			$data_items['metrics'] = $metrics_data;
+			$data_items['dimensions'] = $dimensions_data;
+			return $data_items;
+		}else
+		return '';
 	}
 
 	/* For Displaying View Form */
     public function actionViews(){		
 		
 		$dimensions_metrics_data = $this->actionMetrics();
-		$dimension = $dimensions_metrics_data['dimensions'];
-		$metrics = $dimensions_metrics_data['metrics'];
+		if($dimensions_metrics_data){
+			$dimension = $dimensions_metrics_data['dimensions'];
+			$metrics = $dimensions_metrics_data['metrics'];
+			
+			$token = Craft::$app->getSession()->get("google_user_access_token");
+			if(isset($token) && $token != '') {
+				$data = $this->actionDisplay();
+				$accounts = $data['accounts'];
+				$properties = $data['properties'];
+				$profiles = $data['views'];
+			}else{
+				Craft::$app->getSession()->setNotice(Craft::t('smart-google-analytics', 'Please Connect With Google Analytics.'));
+				return $this->redirect('settings/plugins/smart-google-analytics#settings-tab-settings');
+			}
 		
-		$token = Craft::$app->getSession()->get("google_user_access_token");
-		if(isset($token) && $token != '') {
-			$data = $this->actionDisplay();
-			$accounts = $data['accounts'];
-			$properties = $data['properties'];
-			$profiles = $data['views'];
+			$reportingView = new Views();
+			
+			return $this->renderTemplate('smart-google-analytics/views/add',[
+				'reportingView'=>$reportingView,
+				'accounts' =>$accounts,
+				'properties' => $properties,
+				'profiles'=> $profiles,
+				'dimensions' => $dimension,
+				'metrics' => $metrics,
+			]);
 		}else{
-			Craft::$app->getSession()->setNotice(Craft::t('smart-google-analytics', 'Please Connect With Google Analytics.'));
-			return $this->redirect('settings/plugins/smart-google-analytics#settings-tab-settings');
+			return;
 		}
-	
-		$reportingView = new Views();
-		
-		return $this->renderTemplate('smart-google-analytics/views/add',[
-			'reportingView'=>$reportingView,
-			'accounts' =>$accounts,
-			'properties' => $properties,
-			'profiles'=> $profiles,
-			'dimensions' => $dimension,
-			'metrics' => $metrics,
-		]);
 	}
 
 	/* For Fetching Properties */

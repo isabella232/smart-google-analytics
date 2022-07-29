@@ -8,12 +8,12 @@
  * @copyright Copyright (c) 2021 zealousweb
  */
 
-namespace zealouswebcraftcms\smartgoogleanalytics\unit;
+namespace zealousweb\smartgoogleanalytics\unit;
 
 use Codeception\Test\Unit;
 use UnitTester;
 use Craft;
-use zealouswebcraftcms\smartgoogleanalytics\SmartGoogleAnalytics;
+use zealousweb\smartgoogleanalytics\SmartGoogleAnalytics;
 
 /**
  * ExampleUnitTest

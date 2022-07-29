@@ -8,7 +8,7 @@
  * @copyright Copyright (c) 2021 zealousweb
  */
 
-namespace zealouswebcraftcms\smartgoogleanalytics\migrations;
+namespace zealousweb\smartgoogleanalytics\migrations;
 
 use Craft;
 use craft\db\Migration;

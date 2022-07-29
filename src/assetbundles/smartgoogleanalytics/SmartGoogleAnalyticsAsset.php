@@ -8,7 +8,7 @@
  * @copyright Copyright (c) 2021 zealousweb
  */
 
-namespace zealouswebcraftcms\smartgoogleanalytics\assetbundles\smartgoogleanalytics;
+namespace zealousweb\smartgoogleanalytics\assetbundles\smartgoogleanalytics;
 
 use Craft;
 use craft\web\AssetBundle;
@@ -43,7 +43,7 @@ class SmartGoogleAnalyticsAsset extends AssetBundle
     public function init()
     {
         // define the path that your publishable resources live
-        $this->sourcePath = "@zealouswebcraftcms/smartgoogleanalytics/assetbundles/smartgoogleanalytics/dist";
+        $this->sourcePath = "@zealousweb/smartgoogleanalytics/assetbundles/smartgoogleanalytics/dist";
 
         // define the dependencies
         $this->depends = [

@@ -22,7 +22,7 @@ You can install this plugin either from the Plugin Store or with Composer.
 cd /path/to/my-project
 
 # Command the composer to load the plugin
-composer require zealouswebcraftcms/smart-google-analytics
+composer require zealousweb/smart-google-analytics
 
 # Command the craft to install the plugin
 ./craft install/plugin smart-google-analytics

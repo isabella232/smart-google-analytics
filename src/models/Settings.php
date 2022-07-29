@@ -8,9 +8,9 @@
  * @copyright Copyright (c) 2021 zealousweb
  */
 
-namespace zealouswebcraftcms\smartgoogleanalytics\models;
+namespace zealousweb\smartgoogleanalytics\models;
 
-use zealouswebcraftcms\smartgoogleanalytics\SmartGoogleAnalytics;
+use zealousweb\smartgoogleanalytics\SmartGoogleAnalytics;
 
 use Craft;
 use craft\base\Model;

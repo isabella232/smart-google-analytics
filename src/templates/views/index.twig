@@ -16,7 +16,7 @@
 </div>
 <div style="overflow-x:auto;">
     <table class="data" id ="refresh">
-        {% if data is not empty %}
+        {% if data is defined and not data is empty %}
             <thead class="table-head">
                 <tr class="data-row">
                     <th class="sorting" style="text-align:center">{{Chartname|raw}}</th>
@@ -61,7 +61,9 @@
 
 {#---- Pagination---- #}
 <ul class="pagination">
+{% if pager is defined and not pager is empty%}
     <li>{{pager|raw}}</li>
+{% endif %}
 </ul>
 
 {% block javascript %}

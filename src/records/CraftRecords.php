@@ -8,9 +8,9 @@
  * @copyright Copyright (c) 2020 zealousweb
  */
 
-namespace zealouswebcraftcms\smartgoogleanalytics\records;
+namespace zealousweb\smartgoogleanalytics\records;
 
-use zealouswebcraftcms\smartgoogleanalytics\SmartGoogleAnalytics;
+use zealousweb\smartgoogleanalytics\SmartGoogleAnalytics;
 
 use Craft;
 use craft\db\ActiveRecord;

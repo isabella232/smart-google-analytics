@@ -1,6 +1,6 @@
 <?php
 
-namespace zealouswebcraftcms\smartgoogleanalyticstests\acceptance;
+namespace zealousweb\smartgoogleanalyticstests\acceptance;
 
 use Craft;
 use FunctionalTester;

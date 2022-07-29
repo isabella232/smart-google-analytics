@@ -8,12 +8,12 @@
  * @copyright Copyright (c) 2021 zealousweb
  */
 
-namespace zealouswebcraftcms\smartgoogleanalytics\controllers;
+namespace zealousweb\smartgoogleanalytics\controllers;
 
 use Craft;
-use zealouswebcraftcms\smartgoogleanalytics\SmartGoogleAnalytics;
-use zealouswebcraftcms\smartgoogleanalytics\records\CraftRecords;
-use zealouswebcraftcms\smartgoogleanalytics\models\Views;
+use zealousweb\smartgoogleanalytics\SmartGoogleAnalytics;
+use zealousweb\smartgoogleanalytics\records\CraftRecords;
+use zealousweb\smartgoogleanalytics\models\Views;
 use craft\web\Controller;
 use craft\helpers\UrlHelper;
 use yii\web\Response;
@@ -22,7 +22,7 @@ use craft\web\View;
 use yii\helpers\Json;
 use craft\controllers\PluginsController;
 use craft\helpers\Html;
-use zealouswebcraftcms\smartgoogleanalytics\controllers\ViewController;
+use zealousweb\smartgoogleanalytics\controllers\ViewController;
 use \Google_Client, \Google_Service_Analytics, \Google_Service_Exception;
 
 /**
@@ -76,7 +76,8 @@ class DefaultController extends Controller
         $client->setClientSecret($settings->oauthClientSecret);
         $client->setRedirectUri(UrlHelper::actionUrl('smart-google-analytics/default/callback'));
 		$client->addScope(Google_Service_Analytics::ANALYTICS_READONLY);
-		$client->setAccessType('offline'); 
+		$client->setAccessType('offline');
+
 		if(Craft::$app->getSession()->get("access_token") != '') {
 			$client->setAccessToken(Craft::$app->getSession()->get("access_token"));
 			$analytics = new Google_Service_Analytics($client);
@@ -94,7 +95,7 @@ class DefaultController extends Controller
 	/* Return back from Google Console Account */
     public function actionCallback($code){			
         $settings = $this->actionSettingsData();
-		$client = new Google_Client();
+		$client = new Google_Client(['verify'=>false]);
 		$client->setClientId($settings->oauthClientId);
         $client->setClientSecret($settings->oauthClientSecret);
 		$client->setRedirectUri(UrlHelper::actionUrl('smart-google-analytics/default/callback'));

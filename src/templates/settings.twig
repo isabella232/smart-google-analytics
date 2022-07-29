@@ -23,7 +23,7 @@
 {%- endmacro %}
 
 {% from _self import configWarning %}
-{% do view.registerAssetBundle("zealouswebcraftcms\\smartgoogleanalytics\\assetbundles\\smartgoogleanalytics\\SmartGoogleAnalyticsAsset") %}
+{% do view.registerAssetBundle("zealousweb\\smartgoogleanalytics\\assetbundles\\smartgoogleanalytics\\SmartGoogleAnalyticsAsset") %}
 
     {% set session = craft.app.session.get('google_user_access_token') %} 
     {% set user_name = craft.app.session.get('user_name') %} 

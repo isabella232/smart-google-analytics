@@ -1,5 +1,5 @@
 {
-    "name": "zealouswebcraftcms/smart-google-analytics",
+    "name": "zealousweb/smart-google-analytics",
     "description": "Smart Google Analytics",
     "type": "craft-plugin",
     "version": "1.0.1",
@@ -11,8 +11,8 @@
         "Smart Google Analytics"
     ],
     "support": {
-        "docs": "https://github.com/zealouswebcraftcms/smart-google-analytics/blob/master/README.md",
-        "issues": "https://github.com/zealouswebcraftcms/smart-google-analytics/issues"
+        "docs": "https://github.com/zealousweb/smart-google-analytics/blob/master/README.md",
+        "issues": "https://github.com/zealousweb/smart-google-analytics/issues"
     },
     "license": "proprietary",
     "authors": [
@@ -32,7 +32,7 @@
     },
     "autoload": {
         "psr-4": {
-          "zealouswebcraftcms\\smartgoogleanalytics\\": "src/"
+          "zealousweb\\smartgoogleanalytics\\": "src/"
         }
     },
     "extra": {
@@ -40,8 +40,8 @@
         "handle": "smart-google-analytics",
         "developer": "zealousWeb",
         "developerUrl": "https://www.zealousweb.com",
-        "documentationUrl": "https://github.com/zealouswebcraftcms/smart-google-analytics/blob/master/README.md",
-        "changelogUrl": "https://github.com/zealouswebcraftcms/smart-google-analytics/blob/master/CHANGELOG.md",
-        "class": "zealouswebcraftcms\\smartgoogleanalytics\\SmartGoogleAnalytics"
+        "documentationUrl": "https://github.com/zealousweb/smart-google-analytics/blob/master/README.md",
+        "changelogUrl": "https://github.com/zealousweb/smart-google-analytics/blob/master/CHANGELOG.md",
+        "class": "zealousweb\\smartgoogleanalytics\\SmartGoogleAnalytics"
     }
 }

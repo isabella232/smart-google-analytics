@@ -9,10 +9,10 @@
  */
 
 
-namespace zealouswebcraftcms\smartgoogleanalytics;
-use zealouswebcraftcms\smartgoogleanalytics\models\Settings;
-use zealouswebcraftcms\smartgoogleanalytics\models\Views;
-use zealouswebcraftcms\smartgoogleanalytics\records\CraftRecords;
+namespace zealousweb\smartgoogleanalytics;
+use zealousweb\smartgoogleanalytics\models\Settings;
+use zealousweb\smartgoogleanalytics\models\Views;
+use zealousweb\smartgoogleanalytics\records\CraftRecords;
 
 use Craft;
 use craft\base\Plugin;
