@@ -1,4 +1,4 @@
-# Smart Google Analytics Changelog
+# Release Notes for Smart Google Analytics
 
 ## 1.0.1 - 2022-08-17
 ### Change Package Name
