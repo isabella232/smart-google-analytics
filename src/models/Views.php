@@ -115,6 +115,11 @@ class Views extends Model
     */
    
     /**
+     * @var string Google Analytics Report type GA4 or GA3
+    */
+    public $gaReportType; 
+
+    /**
      * @inheritdoc
     */
     public function rules()

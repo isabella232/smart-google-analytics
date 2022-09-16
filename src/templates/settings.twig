@@ -74,6 +74,24 @@
                         
                         <p> After completing all the steps  place your Client IDs, Client Secret Key, and Maps Api key in the project and save.
                         </p>
+                        <p><h1 class="main-title">Configure Google Analytics 4 </h1></p>
+                        <p>You must complete the above steps first.</p>
+                        <p><b>1.</b> In <b>API & Services → Credentials</b>, scroll to <b>Service Accounts</b> section and click on <b>Manage service accounts</b>.</p>
+                        <p> → Now click on <b>+ CREATE SERVICE ACCOUNT</b>. Fill the Service account details and click on <b> CREATE AND CONTINUE</b></p>
+                        <p> → Grant service account access. Select role with minimum of Read permission.</p>
+                        <p> → Now click on <b>DONE</b> button. You will redirect to Service Accounts listing page.</p>
+                        <p> → Click on recently created service account and navigate to <b>KEYS</b> tab.</p>
+                        <p> → Click on <b>ADD KEY</b> button and select <b>Create new key</b>. A popup will open, select <b>JSON</b> Key type and click on <b>CREATE</b> button.</p>
+                        <p> → A JSON file will download with a message "Private key saved to your computer".</p>
+                        <p> → Keep the downloaded JSON file safe. You will have to copy the content of this JOSON to the field "GA4 Credentials JSON Data" while connecting to your Gmmail account.</p>                     
+                        <p><b>2.</b> Now, you have to add the service account as a user. Copy Email of the service account from <b>DETAIL</b> tab.</p>
+                        <p> → Now go to <a href="https://analytics.google.com/">Analytics</a>. Select the GA4 property from top of the page near search box.</p>
+
+                        <p> → Click on <b>Admin</b> from the left bottom of the page.</p>
+                        <p> → There will be a section for <b>Account</b>. Click on <b>Account Access Management</b>.</p>
+                        <p> → Now click on plus icon at top right of the page and select <b>Add users</b>.</p>
+                        <p> → Now Paste the service account email. Assign a role that have read permission at least and click on <b>ADD</b> button.</p>
+                        <p> → Done.</p>
                     </div>
                 </div>
             </div>
@@ -109,6 +127,16 @@
                 required: true,
                 errors: ((settings|length) ? settings.getErrors('mapsApiKey') : ''),
                 class: 'mapsApiKey'
+            }) }}
+
+             {{ forms.textareaField({
+                label: "GA4 Credentials JSON Data",
+                instructions: 'Copy the contents from JSON file and paste here.',
+                id:   'credentialsJSON',
+                name: 'credentialsJSON',
+                value: ((settings|length) ? settings.credentialsJSON : ''),
+                errors: ((settings|length) ? settings.getErrors('credentialsJSON') : ''),
+                class: 'credentialsJSON'
             }) }}
 
             <input type="button" class="btn submit save-btn disabled" id="up1bt" value="{{'Save'|t('smart-google-analytics') }}">

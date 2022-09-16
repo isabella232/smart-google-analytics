@@ -14,6 +14,7 @@ use zealousweb\smartgoogleanalytics\SmartGoogleAnalytics;
 
 use Craft;
 use craft\base\Model;
+use craft\helpers\FileHelper;
 
 /**
  * SmartGoogleAnalytics Settings Model
@@ -47,6 +48,8 @@ class Settings extends Model
     public $mapsApiKey;
 
     public $settings;
+
+    public $credentialsJSON;
     
     // Public Methods
     // =========================================================================
@@ -67,7 +70,25 @@ class Settings extends Model
         return [
             [['oauthClientId'],'required','message' => 'Client Id can not be blank'],
             [['oauthClientSecret'],'required','message' => 'Client Secret can not be blank'],
-            [['mapsApiKey'],'required','message' => 'Maps ApiKey can not be blank']
+            [['mapsApiKey'],'required','message' => 'Maps ApiKey can not be blank'],
+            ['credentialsJSON','validateJsonString']
         ];
+    }
+
+    public function validateJsonString($attribute, $params, $validator){
+        if($validator->method[0]->credentialsJSON!=''){
+            if (json_decode($validator->method[0]->credentialsJSON) === null && json_last_error() !== JSON_ERROR_NONE) {
+                $this->addError($attribute,'JSON data is not valid');
+            }else{
+                try{
+                    
+                    $file = str_replace("\\", "/",CRAFT_VENDOR_PATH.'/zealousweb/smart-google-analytics/credentials.json');
+                    FileHelper::writeToFile($file,$validator->method[0]->credentialsJSON);
+                }catch(Exception $e){
+                    $this->addError($attribute, $e->getMessage().' Unable to create credentials.json file. Please check Write permission at '.CRAFT_VENDOR_PATH.'/zealousweb/smart_google_analytics/');
+                }
+               
+            }
+        }
     }
 }

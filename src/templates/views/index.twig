@@ -36,8 +36,12 @@
                         <td data-label="Account → Property → View">
                             <div class="Detail">
                                 {{item.account}} →
-                                {{item.property}} →
-                                {{item.views}}
+                                {{item.property}}
+                                {% if item.views %}
+                                    →{{item.views}}
+                                {% else %}
+                                    {{item.views}}
+                                {% endif %}
                             </div>
                         </td>
                         <td data-label="Chart Type" style="text-align:center">{{item.chartType}}</td>

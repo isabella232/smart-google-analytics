@@ -31,6 +31,8 @@ use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterComponentTypesEvent;
 use \Google_Client, \Google_Service_Analytics, \Google_Service_Exception;
 
+use craft\helpers\json;
+
 /**
  * Craft plugins are very much like little applications in and of themselves. We’ve made
  * it as simple as we can, but the training wheels are off. A little prior knowledge is
@@ -69,7 +71,7 @@ class SmartGoogleAnalytics extends Plugin
      *
      * @var string
      */
-    public $schemaVersion = '1.0.1';
+    public $schemaVersion = '1.0.2';
 
     /**
      * Set to `true` if the plugin should have a settings view in the control panel.
@@ -299,7 +301,7 @@ class SmartGoogleAnalytics extends Plugin
     }
 
     public function afterSaveSettings()
-    {
+    {  
         parent::afterSaveSettings();
         Craft::$app->response
             ->redirect(UrlHelper::url('settings/plugins/smart-google-analytics'))

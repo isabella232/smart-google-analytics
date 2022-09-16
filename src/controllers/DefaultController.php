@@ -25,6 +25,14 @@ use craft\helpers\Html;
 use zealousweb\smartgoogleanalytics\controllers\ViewController;
 use \Google_Client, \Google_Service_Analytics, \Google_Service_Exception;
 
+//GA4 integration
+use Google\Analytics\Data\V1beta\BetaAnalyticsDataClient;
+use Google\Analytics\Data\V1beta\DateRange;
+use Google\Analytics\Data\V1beta\Dimension;
+use Google\Analytics\Data\V1beta\Metric;
+use Google\Analytics\Admin\V1alpha\AnalyticsAdminServiceClient;
+use Google\Analytics\Admin\V1alpha\AccountSummary;
+
 /**
  * Default Controller
  *
@@ -174,6 +182,7 @@ class DefaultController extends Controller
 
 	/* Call Dashboard Page */
 	public function actionList() {	
+		
 		$settings = $this->actionSettingsData();
 		$analytics = $this->getAnalyticData();
 		if($analytics == '') {
@@ -196,6 +205,19 @@ class DefaultController extends Controller
 			$items = $properties->getItems();
 			$firstPropertyId = $items[0]->getId();
 		}
+		//GA4 Properties
+		if(file_exists(CRAFT_VENDOR_PATH.'/zealousweb/smart-google-analytics/credentials.json')){
+			putenv('GOOGLE_APPLICATION_CREDENTIALS='.CRAFT_VENDOR_PATH.'/zealousweb/smart-google-analytics/credentials.json');
+			$client = new AnalyticsAdminServiceClient();
+			$properties_ga4 = $client->ListProperties('parent:accounts/'.$firstAccountId);
+			foreach ($properties_ga4 as $account) {
+				$obj=(object)[];
+				$obj->id=$account->getName();
+				$obj->name=$account->getDisplayName();
+				$properties->items[]=$obj;
+			}
+		} 
+		//end GA4 Properties
 
 		/* Get first view based on account and property */
 		if($firstAccountId != '' && $firstPropertyId != '') {
@@ -217,16 +239,61 @@ class DefaultController extends Controller
 			'firstViewId' => $firstViewId,
 		]);
 	}
-
+	function getRowsFromResponse($metric,$dimension,$property,$start_date="", $end_date="")
+	    {
+	        if(file_exists(CRAFT_VENDOR_PATH.'/zealousweb/smart-google-analytics/credentials.json')){
+	            putenv('GOOGLE_APPLICATION_CREDENTIALS='.CRAFT_VENDOR_PATH.'/zealousweb/smart-google-analytics/credentials.json');
+	            $client = new BetaAnalyticsDataClient();
+	            $response = $client->runReport([
+	                'property' => $property,
+	                'dateRanges' => [
+	                    new DateRange([
+	                            'start_date' => $start_date,
+	                            'end_date' => $end_date,
+	                        ]),
+	                        ],
+	                        'dimensions' => [new Dimension(
+	                        [
+	                            'name' => $dimension,
+	                        ]
+	                    ),
+	                    ],
+	                        'metrics' => [new Metric(
+	                        [
+	                            'name' => $metric,
+	                        ]
+	                        )
+	                        ]
+	                    ]);
+	            $data=array();
+	            foreach ($response->getRows() as $row) {
+	                $temp=array();
+	                foreach ($row->getDimensionValues() as $dimensionValue) {
+	                    //print 'Dimension Value: ' . $dimensionValue->getValue() . PHP_EOL;
+	                    $temp[]=$dimensionValue->getValue();
+	                }
+	                foreach ($row->getMetricValues() as $metricsValue) {
+	                    //print 'Metric Value: ' . $metricsValue->getValue() . PHP_EOL;
+	                    $temp[]=$metricsValue->getValue();
+	                }
+	                $data[]=$temp;
+	            }
+	            return $data;
+	       }else{
+	            return array();
+	       }
+	    }
 	/* Get chart data  */
-	public function actionGetChartData($view_id = '',$search_text = '',$start_date = '',$end_date = ''){
-		
+	public function actionGetChartData($view_id = '',$search_text = '',$start_date = '',$end_date = '', $property_id=''){
 		$analytics = $this->getAnalyticData();
 		$view_records = CraftRecords::find();
 
 		if($view_id != '') {
 			$view_id = str_replace("ga:","",$view_id);
 			$view_records = $view_records->where(['gaViewId' => $view_id]);
+		}
+		if($property_id != '') {
+			$view_records = $view_records->where(['gaPropertyId' => $property_id]);
 		}
 		
 		$search_text = trim($search_text);
@@ -235,7 +302,7 @@ class DefaultController extends Controller
         }
 		
 		$view_records = $view_records->andWhere(['dateDeleted' => null]);
-		$view_records = $view_records->andWhere(['status' => 'Active']);         
+		$view_records = $view_records->andWhere(['status' => 'Active']);              
 		$view_records = $view_records->asArray()->all();
 		
 		$array = $bar_data = $pie_data = $geo_data = $column_data = $line_data = [];
@@ -249,25 +316,31 @@ class DefaultController extends Controller
 				$array[$key]['dimensionKey'] = $value['dimensionKey'];
 				$array[$key]['metricsKey'] = $value['metricsKey'];
 				try {
-					$array[$key]['chartData'] = $analytics->data_ga->get(
-						'ga:' . $value['gaViewId'],
-						$start_date,
-						$end_date,
-						$value['metricsValue'],
-						array(
-							'dimensions' => $value['dimensionValue'],
-						)
-					);
-					if($array[$key]['chartData']){
-						foreach($array[$key]['chartData'] as $key_cd => $value_cd){
-							if(!isset($value_cd[1]) && $value_cd[1] == 0){
-								$array[$key]['flag'] = 0;
-							}else{
-								$array[$key]['flag'] = 1;
+					if($value['gaReportType']=="1"){
+						$array[$key]['chartData']['rows']=$this->getRowsFromResponse($value['metricsValue'],$value['dimensionValue'],$value['gaPropertyId'],$start_date, $end_date);
+						
+					}else{ 
+						
+						$array[$key]['chartData'] = $analytics->data_ga->get(
+							'ga:' . $value['gaViewId'],
+							$start_date,
+							$end_date,
+							$value['metricsValue'],
+							array(
+								'dimensions' => $value['dimensionValue'],
+							)
+						);
+						if($array[$key]['chartData']){
+							foreach($array[$key]['chartData'] as $key_cd => $value_cd){
+								if(!isset($value_cd[1]) && $value_cd[1] == 0){
+									$array[$key]['flag'] = 0;
+								}else{
+									$array[$key]['flag'] = 1;
+								}
 							}
+						}else{
+							echo "Notfound";
 						}
-					}else{
-						echo "Notfound";
 					}
 				} catch (Google_Service_Exception $e) {
 					$array[$key]['error'] = $e->getErrors()[0]['message'] ;
@@ -281,25 +354,29 @@ class DefaultController extends Controller
 				$array[$key]['dimensionKey'] = $value['dimensionKey'];
 				$array[$key]['metricsKey'] = $value['metricsKey'];
 				try {
-					$array[$key]['chartData'] = $analytics->data_ga->get(
-						'ga:' . $value['gaViewId'],
-						$start_date,
-						$end_date,
-						$value['metricsValue'],
-						array(
-							'dimensions' => $value['dimensionValue'],
-						)
-					);
-					if($array[$key]['chartData']){
-						foreach($array[$key]['chartData'] as $key_cd => $value_cd){	
-							if(!isset($value_cd[1]) && $value_cd[1] == 0){
-								$array[$key]['flag'] = 0;
-							}else{
-								$array[$key]['flag'] = 1;
+					if($value['gaReportType']=="1"){
+						$array[$key]['chartData']['rows']=$this->getRowsFromResponse($value['metricsValue'],$value['dimensionValue'],$value['gaPropertyId'],$start_date, $end_date);
+					}else{ 
+						$array[$key]['chartData'] = $analytics->data_ga->get(
+							'ga:' . $value['gaViewId'],
+							$start_date,
+							$end_date,
+							$value['metricsValue'],
+							array(
+								'dimensions' => $value['dimensionValue'],
+							)
+						);
+						if($array[$key]['chartData']){
+							foreach($array[$key]['chartData'] as $key_cd => $value_cd){	
+								if(!isset($value_cd[1]) && $value_cd[1] == 0){
+									$array[$key]['flag'] = 0;
+								}else{
+									$array[$key]['flag'] = 1;
+								}
 							}
+						}else{
+							echo "Notfound";
 						}
-					}else{
-						echo "Notfound";
 					}
 				} catch (Google_Service_Exception $e) {
 					$array[$key]['error'] = $e->getErrors()[0]['message'] ;
@@ -313,25 +390,29 @@ class DefaultController extends Controller
 				$array[$key]['dimensionKey'] = $value['dimensionKey'];
 				$array[$key]['metricsKey'] = $value['metricsKey'];
 				try {
-					$array[$key]['chartData'] = $analytics->data_ga->get(
-						'ga:' . $value['gaViewId'], 
-						$start_date,
-						$end_date,
-						$value['metricsValue'],
-						array(
-							'dimensions' => $value['dimensionValue'],
-						)
-					);
-					if($array[$key]['chartData']){
-						foreach($array[$key]['chartData'] as $key_cd => $value_cd){
-							if(!isset($value_cd[1]) && $value_cd[1] == 0){
-								$array[$key]['flag'] = 0;
-							}else{
-								$array[$key]['flag'] = 1;
+					if($value['gaReportType']=="1"){
+						$array[$key]['chartData']['rows']=$this->getRowsFromResponse($value['metricsValue'],$value['dimensionValue'],$value['gaPropertyId'],$start_date, $end_date);
+					}else{ 
+						$array[$key]['chartData'] = $analytics->data_ga->get(
+							'ga:' . $value['gaViewId'], 
+							$start_date,
+							$end_date,
+							$value['metricsValue'],
+							array(
+								'dimensions' => $value['dimensionValue'],
+							)
+						);
+						if($array[$key]['chartData']){
+							foreach($array[$key]['chartData'] as $key_cd => $value_cd){
+								if(!isset($value_cd[1]) && $value_cd[1] == 0){
+									$array[$key]['flag'] = 0;
+								}else{
+									$array[$key]['flag'] = 1;
+								}
 							}
+						}else{
+							echo "Notfound";
 						}
-					}else{
-						echo "Notfound";
 					}
 				} catch (Google_Service_Exception $e) {
 					$array[$key]['error'] = $e->getErrors()[0]['message'] ;
@@ -345,25 +426,29 @@ class DefaultController extends Controller
 				$array[$key]['dimensionKey'] = $value['dimensionKey'];
 				$array[$key]['metricsKey'] = $value['metricsKey'];
 				try {
-					$array[$key]['chartData'] = $analytics->data_ga->get(
-						'ga:' . $value['gaViewId'],
-						$start_date,
-						$end_date,
-						$value['metricsValue'],
-						array(
-							'dimensions' => $value['dimensionValue'],
-						)
-					);
-					if($array[$key]['chartData']){
-						foreach($array[$key]['chartData'] as $key_cd => $value_cd){
-							if(!isset($value_cd[1]) && $value_cd[1] == 0){
-								$array[$key]['flag'] = 0;
-							}else{
-								$array[$key]['flag'] = 1;
+					if($value['gaReportType']=="1"){
+						$array[$key]['chartData']['rows']=$this->getRowsFromResponse($value['metricsValue'],$value['dimensionValue'],$value['gaPropertyId'],$start_date, $end_date);
+					}else{ 
+						$array[$key]['chartData'] = $analytics->data_ga->get(
+							'ga:' . $value['gaViewId'],
+							$start_date,
+							$end_date,
+							$value['metricsValue'],
+							array(
+								'dimensions' => $value['dimensionValue'],
+							)
+						);
+						if($array[$key]['chartData']){
+							foreach($array[$key]['chartData'] as $key_cd => $value_cd){
+								if(!isset($value_cd[1]) && $value_cd[1] == 0){
+									$array[$key]['flag'] = 0;
+								}else{
+									$array[$key]['flag'] = 1;
+								}
 							}
+						}else{
+							echo "Notfound";
 						}
-					}else{
-						echo "Notfound";
 					}
 				} catch (Google_Service_Exception $e) {
 					$array[$key]['error'] = $e->getErrors()[0]['message'] ;
@@ -377,25 +462,29 @@ class DefaultController extends Controller
 				$array[$key]['dimensionKey'] = $value['dimensionKey'];
 				$array[$key]['metricsKey'] = $value['metricsKey'];
 				try {
-					$array[$key]['chartData'] = $analytics->data_ga->get(
-						'ga:' . $value['gaViewId'],
-						$start_date,
-						$end_date,
-						$value['metricsValue'],
-						array(
-							'dimensions' => $value['dimensionValue'],
-						)
-					);
-					if($array[$key]['chartData']){
-						foreach($array[$key]['chartData'] as $key_cd => $value_cd){
-							if(!isset($value_cd[1]) && $value_cd[1] == 0){
-								$array[$key]['flag'] = 0;
-							}else{
-								$array[$key]['flag'] = 1;
+					if($value['gaReportType']=="1"){
+						$array[$key]['chartData']['rows']=$this->getRowsFromResponse($value['metricsValue'],$value['dimensionValue'],$value['gaPropertyId'],$start_date, $end_date);
+					}else{ 
+						$array[$key]['chartData'] = $analytics->data_ga->get(
+							'ga:' . $value['gaViewId'],
+							$start_date,
+							$end_date,
+							$value['metricsValue'],
+							array(
+								'dimensions' => $value['dimensionValue'],
+							)
+						);
+						if($array[$key]['chartData']){
+							foreach($array[$key]['chartData'] as $key_cd => $value_cd){
+								if(!isset($value_cd[1]) && $value_cd[1] == 0){
+									$array[$key]['flag'] = 0;
+								}else{
+									$array[$key]['flag'] = 1;
+								}
 							}
+						}else{
+							echo "Notfound";
 						}
-					}else{
-						echo "Notfound";
 					}
 				} catch (Google_Service_Exception $e) {
 					$array[$key]['error'] = $e->getErrors()[0]['message'];
@@ -410,12 +499,16 @@ class DefaultController extends Controller
 				$array[$key]['startDate'] = date("jS \of F Y ", strtotime($start_date));
                 $array[$key]['endDate'] = date("jS \of F Y ", strtotime($end_date));
 				try {
-					$array[$key]['chartData'] = $analytics->data_ga->get(
-						'ga:' . $value['gaViewId'],
-						$start_date,
-						$end_date,
-						$value['metricsValue'],
-					);
+					if($value['gaReportType']=="1"){
+						$array[$key]['chartData']['rows']=$this->getRowsFromResponse($value['metricsValue'],$value['dimensionValue'],$value['gaPropertyId'],$start_date, $end_date);
+					}else{ 
+						$array[$key]['chartData'] = $analytics->data_ga->get(
+							'ga:' . $value['gaViewId'],
+							$start_date,
+							$end_date,
+							$value['metricsValue'],
+						);
+					}
 				} catch (Google_Service_Exception $e) {
 					$array[$key]['error'] = $e->getErrors()[0]['message'] ;
 				}
@@ -428,25 +521,29 @@ class DefaultController extends Controller
 				$array[$key]['dimensionKey'] = $value['dimensionKey'];
 				$array[$key]['metricsKey'] = $value['metricsKey'];
 				try {
-					$array[$key]['chartData'] = $analytics->data_ga->get(
-						'ga:' . $value['gaViewId'],
-						$start_date,
-						$end_date,
-						$value['metricsValue'],
-						array(
-							'dimensions' => $value['dimensionValue'],
-						)
-					);
-					if($array[$key]['chartData']){
-						foreach($array[$key]['chartData'] as $key_cd => $value_cd){
-							if(!isset($value_cd[1]) && $value_cd[1] == 0){
-								$array[$key]['flag'] = 0;
-							}else{
-								$array[$key]['flag'] = 1;
+					if($value['gaReportType']=="1"){
+						$array[$key]['chartData']['rows']=$this->getRowsFromResponse($value['metricsValue'],$value['dimensionValue'],$value['gaPropertyId'],$start_date, $end_date);
+					}else{ 
+						$array[$key]['chartData'] = $analytics->data_ga->get(
+							'ga:' . $value['gaViewId'],
+							$start_date,
+							$end_date,
+							$value['metricsValue'],
+							array(
+								'dimensions' => $value['dimensionValue'],
+							)
+						);
+						if($array[$key]['chartData']){
+							foreach($array[$key]['chartData'] as $key_cd => $value_cd){
+								if(!isset($value_cd[1]) && $value_cd[1] == 0){
+									$array[$key]['flag'] = 0;
+								}else{
+									$array[$key]['flag'] = 1;
+								}
 							}
+						}else{
+							echo "Notfound";
 						}
-					}else{
-						echo "Notfound";
 					}
 				} catch (Google_Service_Exception $e) {
 					$array[$key]['error'] = $e->getErrors()[0]['message'] ;

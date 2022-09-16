@@ -67,6 +67,7 @@
 
             {{ forms.selectField({
                 label: "Select View"|t('smart-google-analytics'),
+                 instructions: "<b>Note:</b> Views/Profiles are no longer in use in Google Analytics 4. No need to select this if your are selecting GA4 Property.",
                 class: 'views',
                 id: 'gaViewId',
                 name: 'gaViewId',
@@ -265,7 +266,7 @@
                 $.ajax({
                     url:path,
                     method:"GET",
-                    data:{view_id:view_id, search_text:search_text, start_date:start_date, end_date:end_date},
+                    data:{view_id:view_id,search_text:search_text, start_date:start_date, end_date:end_date, property_id:property_id},
                     success:function(response) {
                         var data = $.parseJSON(response); 
                         if(data.length <= 0) {

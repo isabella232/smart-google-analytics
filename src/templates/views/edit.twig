@@ -31,7 +31,7 @@
     {% for item in properties %}
         {% set property = property|merge([{ value: item.id, label: item.name}]) %}
     {% endfor %}
-
+{% set property = property|merge([{ value: '', label: 'Select Property'}]) %}
 {% set profile = [] %}
     {% for item in profiles %}
         {% set profile = profile|merge([{ value: item.id, label: item.name}]) %}
@@ -62,6 +62,14 @@
         
         <div id="account-explorer" class="account-explorer">
             <h2 class="first">{{ "Google Analytics View"|t('smart-google-analytics') }}</h2>
+            {{ forms.lightswitchField ({
+                label: "Is this report for Google Analytics 4?"|t('smart-google-analytics'),
+                instructions: "Toggle On if your are generating report for Google Analytics 4.",
+                class: 'account',
+                id: 'gaReportType',
+                name: 'gaReportType', 
+                on: record.gaReportType
+            }) }}
             {{ forms.selectField ({
                 label: "Select Account"|t('smart-google-analytics'),
                 class: 'account',
@@ -84,6 +92,7 @@
 
             {{ forms.selectField({
                 label: "Select View"|t('smart-google-analytics'),
+                instructions: "Select Analytic View <br> <b>Note:</b> Views/Profiles are no longer in use in Google Analytics 4. No need to select this if your are selecting GA4 Property.",
                 class: 'views',
                 id: 'gaViewId',
                 name: 'gaViewId',
@@ -187,8 +196,8 @@
                 viewsName();
                 loadView();
                 metricsValue();
-                loadDimension();
-                
+                //loadDimension();
+               
                 $('#gaAccountId').on('change', function() {
                     loadPropertyandView();
                 }); 
@@ -204,6 +213,24 @@
                 $('#dimensionValue').on('change', function() {
                     dimensionValue();
                 });
+                $('#gaReportType').on('change',function(){
+                    console.log('changed');
+                    if($(this).attr('aria-checked')=="true"){
+                        getGa4Matrics();
+                        $('#gaPropertyId option[value*="UA-"]').attr('disabled',true);
+                        $('#gaPropertyId option').not("[value*='UA-']").attr('disabled',false);
+                    }else{
+                        getGa3Matrics();
+                         $('#gaPropertyId option[value*="UA-"]').attr('disabled',false);
+                        $('#gaPropertyId option').not("[value*='UA-']").attr('disabled',true);
+                    }
+                });
+                if($('#gaReportType').attr('aria-checked')=="true"){
+                    $('#gaPropertyId option[value*="UA-"]').attr('disabled',true);
+                }
+                if($('#gaReportType').attr('aria-checked')=="false"){
+                    $('#gaPropertyId option').not("[value*='UA-']").attr('disabled',true);
+                }
             });
 
             function loadPropertyandView(){
@@ -226,9 +253,13 @@
                         $("#update-btn").addClass('disabled');
                     },
                     complete: function (response) {
-                        var make_options = '';
+                        var make_options = '<option value="">Select Property</option>';
                         $.each( response.responseJSON.property_array, function( key, value ) {
-                            make_options = make_options + '<option value="'+value.id+'">'+value.name+'</option>';
+                            if($("#gaReportType").attr('aria-checked')=="true" && value.id.indexOf('UA')==0){
+                                make_options = make_options + '<option value="'+value.id+'" disabled>'+value.name+'</option>';
+                            }else{
+                                make_options = make_options + '<option value="'+value.id+'">'+value.name+'</option>';
+                            }
                         });
                         $("#gaPropertyId").html(make_options);
                         propertyName();
@@ -322,49 +353,53 @@
             });
 
             function loadDimension(){
-                var urlProperty = "{{ actionUrl('smart-google-analytics/view/dimensions') }}"; 
-                var htmlData = '';
-                var dimension = '{{ record.dimensionValue }}';
-                var chartType = $( "#chartType option:selected" ).val();
-                $.ajax ({
-                    type: 'GET',
-                    url: urlProperty,
-                    data: {'chartType': $("#chartType").val()},
-                    dataType: "JSON",
-                    beforeSend: function(){
-                        // Show loader container
-                        $("#dimensionValue-field").append('<div class="zeal-field-loader"><label>Loading...</label></div>');
-                        $(".toggledDropDown").hide();
-                        $("#update-btn").attr('disabled', true);
-                        $("#update-btn").addClass('disabled');
-                    },
-                    }).done(function(response) {
-                        htmlData += ' <select id="dimensionValue" name="dimensionValue" aria-describedby="dimensionValue-instructions"> ';
-                        if(chartType == 'STAT'){
-                            htmlData += ' <option value="-">Select Dimension</option>  ';
-                        }else{
-                            htmlData += ' <option value="">Select Dimension</option>  ';
-                        }
-                        
-                        $.each(response.dimensions, function( key, value ){                                
-                            htmlData += '<optgroup label="'+key+'">';
-                            $.each( value, function( i, val ) {  
-                                htmlData+=  '<option value="' + val.id + '"' + (val.id === dimension ? 'selected="selected"' : '') +'>'+val.attributes.uiName+'</option>'; 
-                            });  
-                            htmlData +='</optgroup>';
-                        });
-                        htmlData +='</select>';
+                if($('#gaReportType').attr('aria-checked')=="false"){
+                    var urlProperty = "{{ actionUrl('smart-google-analytics/view/dimensions') }}"; 
+                    var htmlData = '';
+                    var dimension = '{{ record.dimensionValue }}';
+                    var chartType = $( "#chartType option:selected" ).val();
+                    $.ajax ({
+                        type: 'GET',
+                        url: urlProperty,
+                        data: {'chartType': $("#chartType").val()},
+                        dataType: "JSON",
+                        beforeSend: function(){
+                            // Show loader container
+                            $("#dimensionValue-field").append('<div class="zeal-field-loader"><label>Loading...</label></div>');
+                            $(".toggledDropDown").hide();
+                            $("#update-btn").attr('disabled', true);
+                            $("#update-btn").addClass('disabled');
+                        },
+                        }).done(function(response) {
+                            htmlData += ' <select id="dimensionValue" name="dimensionValue" aria-describedby="dimensionValue-instructions"> ';
+                            if(chartType == 'STAT'){
+                                htmlData += ' <option value="-">Select Dimension</option>  ';
+                            }else{
+                                htmlData += ' <option value="">Select Dimension</option>  ';
+                            }
+                            
+                            $.each(response.dimensions, function( key, value ){                                
+                                htmlData += '<optgroup label="'+key+'">';
+                                $.each( value, function( i, val ) {  
+                                    htmlData+=  '<option value="' + val.id + '"' + (val.id === dimension ? 'selected="selected"' : '') +'>'+val.attributes.uiName+'</option>'; 
+                                });  
+                                htmlData +='</optgroup>';
+                            });
+                            htmlData +='</select>';
 
-                        $('#dimensionValue').html(htmlData);
+                            $('#dimensionValue').html(htmlData);
 
-                        // Hide loader container   
-                        $("#dimensionValue-field .zeal-field-loader").remove(); 
-                        $(".toggledDropDown").show(); 
-                        $("#update-btn").removeAttr('disabled');
-                        $("#update-btn").removeClass('disabled');                        
-                    }).fail(function(jqXHR, ajaxOptions, thrownError) {
-                        alert('No response from server');
-                });
+                            // Hide loader container   
+                            $("#dimensionValue-field .zeal-field-loader").remove(); 
+                            $(".toggledDropDown").show(); 
+                            $("#update-btn").removeAttr('disabled');
+                            $("#update-btn").removeClass('disabled');                        
+                        }).fail(function(jqXHR, ajaxOptions, thrownError) {
+                            alert('No response from server');
+                    });
+                }else{
+                    getGa4Matrics();
+                }
             }
 
             function loadstatChart(){
@@ -394,7 +429,107 @@
                     $(".dimension-error").hide();
                 }
             });
+             //GA4 Implementation
+            function getGa4Matrics(){
+                    var urlProperty = "{{ actionUrl('smart-google-analytics/view/ga4metrics') }}"; 
+                    var htmlData = '';
+                    var chartType = $( "#chartType option:selected" ).val();
+                    $.ajax ({
+                        type: 'GET',
+                        url: urlProperty,
+                        data: {'chartType': $(this).attr("value")},
+                        dataType: "JSON",
+                        beforeSend: function(){
+                            // Show loader container
+                            $("#metrics-field").append('<div class="zeal-field-loader"><label>Loading...</label></div>');
+                            $("#dimensionValue-field").append('<div class="zeal-field-loader"><label>Loading...</label></div>');
+                            //$(".select").hide();
+                            $("#metrics-field .select").hide();
+                            $("#dimensionValue-field .select").hide();
+                        },
+                        }).done(function(response) {
+                            console.log(response);
+                            $(".select").show();
+                            htmlData += ' <option value="0">Select Dimension</option>';
+                            $.each(response.dimensions, function( key, value ){                                
+                                htmlData += '<optgroup label="'+key+'">';
+                                $.each( value, function( i, val ) {  
+                                    htmlData+= '<option value="'+i+'">'+val+'</option>';                                        
+                                });                         
+                                htmlData +='</optgroup>';
+                            });
+                        
+                            $("#dimensionValue-field select").show();
+                            $('#dimensionValue-field select').html(htmlData);
+                            $("#dimensionValue-field .zeal-field-loader").remove();
+                            //dimensionValue();
 
+                            htmlData = ' <option value="0">Select Metrics</option>';
+                            $.each(response.metrics, function( key, value ){                                
+                                htmlData += '<optgroup label="'+key+'">';
+                                $.each( value, function( i, val ) {  
+                                    htmlData+= '<option value="'+i+'">'+val+'</option>';                                        
+                                });                         
+                                htmlData +='</optgroup>';
+                            });
+                        
+                            $("#metrics-field select").show();
+                            $('#metrics-field select').html(htmlData);
+                            $("#metrics-field .zeal-field-loader").remove();                 
+                        }).fail(function(jqXHR, ajaxOptions, thrownError) {
+                            alert('No response from server');
+                    });
+            }
+            function getGa3Matrics(){
+                var urlProperty = "{{ actionUrl('smart-google-analytics/view/ga3metrics') }}"; 
+                    var htmlData = '';
+                    var chartType = $( "#chartType option:selected" ).val();
+                    $.ajax ({
+                        type: 'GET',
+                        url: urlProperty,
+                        data: {'chartType': $(this).attr("value")},
+                        dataType: "JSON",
+                        beforeSend: function(){
+                            // Show loader container
+                            $("#metrics-field").append('<div class="zeal-field-loader"><label>Loading...</label></div>');
+                            $("#dimensionValue-field").append('<div class="zeal-field-loader"><label>Loading...</label></div>');
+                            //$(".select").hide();
+                            $("#metrics-field .select").hide();
+                            $("#dimensionValue-field .select").hide();
+                        },
+                        }).done(function(response) {
+                            console.log(response);
+                            $(".select").show();
+                            htmlData += ' <option value="0">Select Dimension</option>';
+                            $.each(response.dimensions, function( key, value ){                                
+                                htmlData += '<optgroup label="'+key+'">';
+                                $.each( value, function( i, val ) { 
+                                    htmlData+= '<option value="'+val.id+'">'+val.attributes.uiName+'</option>';                                        
+                                });                         
+                                htmlData +='</optgroup>';
+                            });
+                        
+                            $("#dimensionValue-field select").show();
+                            $('#dimensionValue-field select').html(htmlData);
+                            $("#dimensionValue-field .zeal-field-loader").remove();
+                            //dimensionValue();
+
+                            htmlData = ' <option value="0">Select Metrics</option>';
+                            $.each(response.metrics, function( key, value ){                                
+                                htmlData += '<optgroup label="'+key+'">';
+                                $.each( value, function( i, val ) {  
+                                    htmlData+= '<option value="'+val.id+'">'+val.attributes.uiName+'</option>';                                        
+                                });                         
+                                htmlData +='</optgroup>';
+                            });
+                        
+                            $("#metrics-field select").show();
+                            $('#metrics-field select').html(htmlData);
+                            $("#metrics-field .zeal-field-loader").remove();                 
+                        }).fail(function(jqXHR, ajaxOptions, thrownError) {
+                            alert('No response from server');
+                    });
+            }
         </script>
     {% endblock %}
 {% endset %} 

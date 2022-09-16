@@ -102,6 +102,7 @@ class Install extends Migration
                 [
                     'id'          => $this->primaryKey()->notNull(),
                     'account' => $this->string()->null(),
+                    'gaReportType' => $this->string()->null(),
                     'gaAccountId' => $this->integer()->notNull(),
                     'property' => $this->string()->null(),
                     'gaPropertyId' => $this->string()->notNull(),

@@ -23,6 +23,14 @@ use Exception;
 use League\OAuth2\Client\Provider\Exception\IdentityProviderException;
 use yii\web\NotFoundHttpException;
 use zealousweb\smartgoogleanalytics\controllers\DefaultController;
+//GA4 integration
+use Google\Analytics\Data\V1beta\BetaAnalyticsDataClient;
+use Google\Analytics\Data\V1beta\DateRange;
+use Google\Analytics\Data\V1beta\Dimension;
+use Google\Analytics\Data\V1beta\Metric;
+use Google\Analytics\Admin\V1alpha\AnalyticsAdminServiceClient;
+use Google\Analytics\Admin\V1alpha\AccountSummary;
+
 
 /**
  * View Controller
@@ -161,49 +169,83 @@ class ViewController extends Controller
 	}
 
 	/* To get metrics using API */
-	public function actionMetrics(){
-		$url = "https://www.googleapis.com/analytics/v3/metadata/ga/columns";
-		$ch = curl_init($url);
-		//curl_setopt($ch, CURLOPT_URL,$url);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER,1);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-		$items = curl_exec($ch);
-		curl_close ($ch);
-		$data = json_decode($items, true);
-		if($data){
-			$items = $data['items'];
-			$data_items = [];
-			$dimensions_data = [];
-			$metrics_data = [];
-			$remove_metrics_id = [
-				'ga:1dayUsers',
-				'ga:7dayUsers',
-				'ga:14dayUsers',
-				'ga:28dayUsers',
-				'ga:30dayUsers'
-			];
-			foreach( $items as $item ){
-				if( $item['attributes']['status'] == 'DEPRECATED' )
-					continue;
+	public function actionMetrics($reportType=''){
+		if($reportType==''){
+			$url = "https://www.googleapis.com/analytics/v3/metadata/ga/columns";
+			$ch = curl_init($url);
+			//curl_setopt($ch, CURLOPT_URL,$url);
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER,1);
+			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+			$items = curl_exec($ch);
+			curl_close ($ch);
+			$data = json_decode($items, true);
+			//var_dump($data);exit;
+			if($data){
+				$items = $data['items'];
+				$data_items = [];
+				$dimensions_data = [];
+				$metrics_data = [];
+				$remove_metrics_id = [
+					'ga:1dayUsers',
+					'ga:7dayUsers',
+					'ga:14dayUsers',
+					'ga:28dayUsers',
+					'ga:30dayUsers'
+				];
+				foreach( $items as $item ){
+					if( $item['attributes']['status'] == 'DEPRECATED' )
+						continue;
 
-				if( $item['attributes']['type'] == 'DIMENSION' ) {
-					if($item['attributes']['group'] != 'Geo Network') {
-						$dimensions_data[ $item['attributes']['group'] ][] = $item;
+					if( $item['attributes']['type'] == 'DIMENSION' ) {
+						if($item['attributes']['group'] != 'Geo Network') {
+							$dimensions_data[ $item['attributes']['group'] ][] = $item;
+						}
+					}
+
+					if( $item['attributes']['type'] == 'METRIC' ) {
+						if (!in_array($item['id'], $remove_metrics_id)) {
+							$metrics_data[ $item['attributes']['group'] ][] = $item;
+						}		
 					}
 				}
-
-				if( $item['attributes']['type'] == 'METRIC' ) {
-					if (!in_array($item['id'], $remove_metrics_id)) {
-						$metrics_data[ $item['attributes']['group'] ][] = $item;
-					}		
+				$data_items['metrics'] = $metrics_data;
+				$data_items['dimensions'] = $dimensions_data;
+				/*
+				$ga4=json_decode($this->actionGa4metrics(),true);
+				foreach($ga4['metrics'] as $key=>$met){
+					foreach($met as $k=>$m){
+						$metrics_data[$key][]=array('id'=>$k,'attributes'=>array('uiName'=>$m));
+					}
 				}
-			}
-			$data_items['metrics'] = $metrics_data;
-			$data_items['dimensions'] = $dimensions_data;
-			return $data_items;
-		}else
-		return '';
+				foreach($ga4['dimensions'] as $key=>$met){
+					foreach($met as $k=>$m){
+						$dimensions_data[$key][]=array('id'=>$k,'attributes'=>array('uiName'=>$m));
+					}
+				}
+				$data_items['metrics'] = $metrics_data;
+				*/
+				return $data_items;
+			}else
+			return '';
+		}else{
+			$dimensions_data = [];
+			$metrics_data = [];
+				$ga4=json_decode($this->actionGa4metrics(),true);
+				foreach($ga4['metrics'] as $key=>$met){
+					foreach($met as $k=>$m){
+						$metrics_data[$key][]=array('id'=>$k,'attributes'=>array('uiName'=>$m));
+					}
+				}
+				foreach($ga4['dimensions'] as $key1=>$met1){
+					foreach($met1 as $k1=>$m1){
+						$dimensions_data[$key1][]=array('id'=>$k1,'attributes'=>array('uiName'=>$m1));
+					}
+				}
+				$data_items['metrics'] = $metrics_data;
+				$data_items['dimensions'] = $dimensions_data;
+				return $data_items;
+		}
 	}
 
 	/* For Displaying View Form */
@@ -250,7 +292,18 @@ class ViewController extends Controller
 			$arr_data['property_array'][$key]['id'] = $value->id;
 			$arr_data['property_array'][$key]['name'] = $value->name;
 		}
-		
+		//fetching GA4 properties
+	        if(file_exists(CRAFT_VENDOR_PATH.'/zealousweb/smart-google-analytics/credentials.json')){
+	            putenv('GOOGLE_APPLICATION_CREDENTIALS='.CRAFT_VENDOR_PATH.'/zealousweb/smart-google-analytics/credentials.json');
+	            $client = new AnalyticsAdminServiceClient();
+	            $properties_ga4 = $client->ListProperties('parent:accounts/'.$AccountId);
+	            $properties_ga4_array=array();
+	            foreach ($properties_ga4 as $account) {
+	                $arr_data['property_array'][count($properties)+1]['id']=$account->getName();
+	                $arr_data['property_array'][count($properties)+1]['name']=$account->getDisplayName();
+	            }
+	        } 
+	        //End fetching GA4 properties
 		$items = $properties->getItems();
         $PropertyId = isset($items[0]) ? $items[0]->getId() : '';
         $flag = 0;
@@ -259,23 +312,27 @@ class ViewController extends Controller
             $arr_data1 = $get_property;
         }
         $merge_array = array_merge($arr_data, $arr_data1); 
+
 		return json_encode($merge_array);
 	}
 	
 	/* For Fetching Profiles */
 	public function actionProfiles($AccountId ,$PropertyId, $flag) {
-		$arry_data = [];
-		$analytics_services = $this->actionDetails();
-		$profiles = $analytics_services->management_profiles
-			->listManagementProfiles($AccountId ,$PropertyId);
-		foreach ($profiles as $key => $value) {
-			$arry_data['profiles_array'][$key]['id'] = $value->id;
-			$arry_data['profiles_array'][$key]['name'] = $value->name;
-		}
-		if($flag == 0) {
-			return $arry_data;
-		} else {
-			return json_encode($arry_data);
+		if(strpos($PropertyId,'UA-')!==false){
+			$arry_data = [];
+			$analytics_services = $this->actionDetails();
+			$profiles = $analytics_services->management_profiles->listManagementProfiles($AccountId ,$PropertyId);
+			foreach ($profiles as $key => $value) {
+				$arry_data['profiles_array'][$key]['id'] = $value->id;
+				$arry_data['profiles_array'][$key]['name'] = $value->name;
+			}
+			if($flag == 0) {
+				return $arry_data;
+			} else {
+				return json_encode($arry_data);
+			}
+		}else{
+			return json_encode(array());
 		}
 	}
 
@@ -299,6 +356,7 @@ class ViewController extends Controller
 		$reportingView->dimensionValue = $request->getBodyParam('dimensionValue');
 		$reportingView->metricsKey = $request->getBodyParam('metricsKey');
 		$reportingView->metricsValue = $request->getBodyParam('metricsValue');
+		$reportingView->gaReportType = $request->getBodyParam('gaReportType');
 		
 		$dimensions_metrics_data = $this->actionMetrics();
 		$dimension = $dimensions_metrics_data['dimensions'];
@@ -331,6 +389,7 @@ class ViewController extends Controller
 			$record->dimensionValue = $reportingView->dimensionValue;
 			$record->metricsKey = $reportingView->metricsKey;
 			$record->metricsValue = $reportingView->metricsValue;
+			$record->gaReportType = $reportingView->gaReportType;
 			
 			if($record->save()) {
 				Craft::$app->getSession()->setNotice(Craft::t('smart-google-analytics', 'View Saved Successfully'));
@@ -363,19 +422,30 @@ class ViewController extends Controller
 
 	/* Fetch the record for edit */
 	public function actionEditView(string $viewId){
-		
-		$dimensions_metrics_data = $this->actionMetrics();
+		$record = CraftRecords::findOne($viewId);
+		$dimensions_metrics_data = $this->actionMetrics($record->gaReportType);
 		$dimension = $dimensions_metrics_data['dimensions'];
 		$metrics = $dimensions_metrics_data['metrics'];
 		
-		$record = CraftRecords::findOne($viewId);
 		$analytics_services = $this->actionDetails();
 		$accounts=$analytics_services->management_accounts->listManagementAccounts();
-		$properties = $analytics_services->management_webproperties
-		->listManagementWebproperties($record->gaAccountId);
-		$profiles = $analytics_services->management_profiles
-		->listManagementProfiles($record->gaAccountId, $record->gaPropertyId);
-		
+		$properties = $analytics_services->management_webproperties->listManagementWebproperties($record->gaAccountId);
+		if($record->gaReportType=='1'){
+			$profiles=array();
+		}else{
+			$profiles = $analytics_services->management_profiles->listManagementProfiles($record->gaAccountId, $record->gaPropertyId);
+		}
+		if(file_exists(CRAFT_VENDOR_PATH.'/zealousweb/smart-google-analytics/credentials.json')){
+			putenv('GOOGLE_APPLICATION_CREDENTIALS='.CRAFT_VENDOR_PATH.'/zealousweb/smart-google-analytics/credentials.json');
+			$client = new AnalyticsAdminServiceClient();
+			$properties_ga4 = $client->ListProperties('parent:accounts/'.$record->gaAccountId);
+			foreach ($properties_ga4 as $account) {
+				$obj=(object)[];
+				$obj->id=$account->getName();
+				$obj->name=$account->getDisplayName();
+				$properties->items[]=$obj;
+			}
+		} 
 		$reportingView = new Views();
 		return $this->renderTemplate('smart-google-analytics/views/edit',[
 			'record' => $record,
@@ -409,6 +479,8 @@ class ViewController extends Controller
 		$reportingView->dimensionValue = $request->getBodyParam('dimensionValue');
 		$reportingView->metricsKey = $request->getBodyParam('metricsKey');
 		$reportingView->metricsValue = $request->getBodyParam('metricsValue');
+		$reportingView->gaReportType = $request->getBodyParam('gaReportType');
+		
 		
 		$dimensions_metrics_data = $this->actionMetrics();
 		$dimension = $dimensions_metrics_data['dimensions'];
@@ -463,6 +535,7 @@ class ViewController extends Controller
 			$record->dimensionValue = ($reportingView->chartType != 'STAT') ? $reportingView->dimensionValue : '-';
 			$record->metricsKey = $reportingView->metricsKey;
 			$record->metricsValue = $reportingView->metricsValue;
+			$record->gaReportType = $reportingView->gaReportType;
 			if($record->save()) {
 				Craft::$app->getSession()->setNotice(Craft::t('smart-google-analytics', 'View Edited Successfully'));
 				return $this->redirect('settings/plugins/smart-google-analytics#settings-tab-View');
@@ -482,6 +555,38 @@ class ViewController extends Controller
 				'metrics' => $metrics,
 			]);
 		}
+	}
+
+	//GA4 get Metrics
+	public function actionGa4metrics(){
+		if(file_exists(CRAFT_VENDOR_PATH.'/zealousweb/smart-google-analytics/credentials.json')){
+            putenv('GOOGLE_APPLICATION_CREDENTIALS='.CRAFT_VENDOR_PATH.'/zealousweb/smart-google-analytics/credentials.json');
+            $client = new BetaAnalyticsDataClient();
+            $dm=$client->getMetaData('properties/0/metadata');
+
+            $ga4_dimensions=array();
+            $ga4_metrics=array();
+
+            foreach ($dm->getDimensions() as $row) {
+                $ga4_dimensions[$row->getCategory()][$row->getApiName()]=$row->getUiName();
+            }
+            foreach ($dm->getMetrics() as $row) {
+                $ga4_metrics[$row->getCategory()][$row->getApiName()]=$row->getUiName();
+            }
+
+            ksort($ga4_metrics);
+            ksort($ga4_dimensions);
+            return json_encode(array('dimensions'=>$ga4_dimensions,'metrics'=>$ga4_metrics));
+            exit();
+        }else{
+            return json_encode(array('dimensions'=>[],'metrics'=>[]));
+            exit();
+        }
+	}
+
+	public function actionGa3metrics(){
+		echo json_encode(array('dimensions'=>json_decode($this->actionDimensions(''),true)['dimensions'],'metrics'=>$this->actionMetrics()['metrics']));
+		exit;
 	}
 }
 
