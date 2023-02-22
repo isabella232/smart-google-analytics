@@ -64,7 +64,8 @@ class DefaultController extends Controller
      *         The actions must be in 'kebab-case'
      * @access protected
      */
-    protected $allowAnonymous = true;
+    //protected $allowAnonymous = true; // Used in craft 3
+	protected array|bool|int $allowAnonymous = true; // Used in craft 4
 
     // Public Methods
     // =========================================================================

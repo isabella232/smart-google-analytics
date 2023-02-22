@@ -71,21 +71,21 @@ class SmartGoogleAnalytics extends Plugin
      *
      * @var string
      */
-    public $schemaVersion = '1.0.2';
+    public string $schemaVersion = '1.0.2';
 
     /**
      * Set to `true` if the plugin should have a settings view in the control panel.
      *
      * @var bool
      */
-    public $hasCpSettings = true;
+    public bool $hasCpSettings = true;
 
     /**
      * Set to `true` if the plugin should have its own section (main nav item) in the control panel.
      *
      * @var bool
      */
-    public $hasCpSection = true;
+    public bool $hasCpSection = true;
 
     // Public Methods
     // =========================================================================
@@ -131,17 +131,37 @@ class SmartGoogleAnalytics extends Plugin
             }
         );
 
+        
         /* Creating Tabs for Setting Page */
         Event::on(View::class, View::EVENT_BEFORE_RENDER_TEMPLATE, function (TemplateEvent $e) {
-            if (
-                $e->template === 'settings/plugins/_settings' &&
-                $e->variables['plugin'] === $this
-            ) {
-                // Add the tabs
-                $e->variables['tabs'] = [
-                    ['label' => 'Settings', 'url' => '#settings-tab-settings'],
-                    ['label' => 'View', 'url' => '#settings-tab-View'],
-                ];
+
+            $craftVersion = Craft::$app->version;
+           
+            if(isset($craftVersion) && $craftVersion >= '4'){
+                
+                //For Craft 4
+                if (
+                    $e->template == 'smart-google-analytics/settings' || 
+                        $e->template == 'settings/plugins/_settings.twig'
+                ) {
+                    // Add the tabs
+                    $e->variables['tabs'] = [
+                        ['label' => 'Settings', 'url' => '#settings-tab-settings'],
+                        ['label' => 'View', 'url' => '#settings-tab-View'],
+                    ];
+                }
+            } else {
+                //For Craft 3
+                if (
+                    $e->template === 'settings/plugins/_settings' &&
+                    $e->variables['plugin'] === $this
+                ) {
+                    // Add the tabs
+                    $e->variables['tabs'] = [
+                        ['label' => 'Settings', 'url' => '#settings-tab-settings'],
+                        ['label' => 'View', 'url' => '#settings-tab-View'],
+                    ];
+                }
             }
         });
         
@@ -195,9 +215,11 @@ class SmartGoogleAnalytics extends Plugin
      *
      * @return \craft\base\Model|null
      */
-    protected function createSettingsModel()
+    protected function createSettingsModel(): ?craft\base\Model
     {
         return new Settings();
+        // return new \zealousweb\smartgoogleanalytics\models\Settings();
+
     }
 
     /**
@@ -290,23 +312,24 @@ class SmartGoogleAnalytics extends Plugin
         ]);
     }
 
-    public function getCpNavItem()
+    public function getCpNavItem(): ?array
     {
         if(Craft::$app->getSession()->get("google_user_access_token") == '') {
-            return;
+            return null;
         }     
         $navItem = parent::getCpNavItem();
         $navItem['label'] = Craft::t('smart-google-analytics', 'Smart Google Analytics');
         return $navItem;
     }
 
-    public function afterSaveSettings()
+    public function afterSaveSettings(): void
     {  
         parent::afterSaveSettings();
         Craft::$app->response
             ->redirect(UrlHelper::url('settings/plugins/smart-google-analytics'))
             ->send();
     } 
+    
    
 }
 

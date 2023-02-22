@@ -27,6 +27,17 @@
 
     {% set session = craft.app.session.get('google_user_access_token') %} 
     {% set user_name = craft.app.session.get('user_name') %} 
+    {% set craft_version = craft.app.version() %} 
+    {% set tabs = {
+        content: {
+            label: 'Content'|t('plugin-handle'),
+            url: '#content',
+        },
+        settings: {
+            label: 'Settings'|t('plugin-handle'),
+            url: '#settings',
+        },
+        } %}
    
     {% if session == '' %}
         {# First Tab For Setting Page #}
@@ -168,15 +179,16 @@
                 </div>
             </div>
         </div>
-    {# Second Tab For View Page  #}
-    <div id="tab-View" class="hidden">
-        {% include 'smart-google-analytics/views' with {data: data} %}
-    </div>
+        {# Second Tab For View Page  #}
+        <div id="tab-View" class="hidden">
+            {% include 'smart-google-analytics/views' with {data: data} %}
+        </div>
 {% endif %}
 
 {% block javascript %}
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script type="text/javascript">
+        var craftVersion = ("{{craft_version|length}}") ? '{{craft_version}}' : '';
         var CLIENTID = ("{{settings|length}}") ? '{{settings.oauthClientId}}' : '';
         var SECRETKEY = ("{{settings|length}}") ? "{{settings.oauthClientSecret}}" : '';
         var MAPSAPIKEY = ("{{settings|length}}") ? "{{settings.mapsApiKey}}" : '';
@@ -206,7 +218,14 @@
                 var secret_id = $("input[name='oauthClientSecret']").val();
                 var map_apikey = $("input[name='mapsApiKey']").val();
                 if(client_id != '' && secret_id != '' && map_apikey != '') {
-                    $('#action-button').find('.submit').click();
+                    //condition for craft
+                    if(craftVersion != ''){
+                        if(craftVersion >= '4'){
+                            $('#main-form').submit();
+                        } else {
+                            $('#action-button').find('.submit').click();
+                        }
+                    }
                 }
             });
         });

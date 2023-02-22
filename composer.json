@@ -2,11 +2,12 @@
     "name": "zealousweb/smart-google-analytics",
     "description": "Smart Google Analytics",
     "type": "craft-plugin",
-    "version": "1.0.2",
+    "version": "2.0",
     "keywords": [
         "craft",
         "cms",
         "craftcms",
+        "craft4",
         "craft-plugin",
         "Smart Google Analytics"
     ],
@@ -21,16 +22,18 @@
             "homepage": "https://www.zealousweb.com"
         }
     ],
+    "minimum-stability": "dev",
+    "prefer-stable": true,
     "require": {
-        "craftcms/cms": "^3.0.0",
+        "craftcms/cms": "^4.0.0",
         "google/apiclient": "^v2.6.0",
         "google/analytics-data": "^0.8.6",
         "google/apiclient-services":"^0.262.0",
         "google/auth":"^1.21.1",
-        "google/analytics-admin":"^0.6.4"
+        "google/analytics-admin":"^0.6.4",
+        "craftcms/html-field": "^2.0.0"
     },
     "require-dev": {
-      "craftcms/cms": "^3.2.0",
       "codeception/codeception": "^3.0",
       "vlucas/phpdotenv": "^3.0"
     },

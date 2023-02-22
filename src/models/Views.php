@@ -122,7 +122,7 @@ class Views extends Model
     /**
      * @inheritdoc
     */
-    public function rules()
+    public function rules(): array
     {
         $rules = [
             [['chartName'],'required','message' => 'Chart Name can not be blank'],

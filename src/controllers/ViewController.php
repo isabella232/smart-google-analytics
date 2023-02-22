@@ -63,7 +63,7 @@ class ViewController extends Controller
      *         The actions must be in 'kebab-case'
      * @access protected
      */
-    protected $allowAnonymous = true;
+	protected array|bool|int $allowAnonymous = true; // Used in craft 4
 
     // Public Methods
     // =========================================================================

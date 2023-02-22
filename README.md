@@ -1,4 +1,4 @@
-# Smart Google Analytics plugin for Craft CMS 3.x
+# Smart Google Analytics plugin for Craft CMS 3.x & 4.x
 
 This plugin provides access to a massive amount of data related to how users find and interact with your site. For example, you can see how many people visited a specific page, how much time they spent there, where your users live, how the specific keywords are performing, and so forth.
 
